@@ -3,7 +3,7 @@
 
 # Pull our base image in. This instance of the image will be the target to which
 # we apply our modifications
-FROM ghcr.io/srvrguy/icinga2:v2.14.2 as icinga2-target
+FROM ghcr.io/srvrguy/icinga2:v2.14.2 AS icinga2-target
 
 # The base image switches to the icinga user, we need to switch to root to do
 # our additions.
@@ -14,7 +14,7 @@ USER root
 RUN apt-get update ;\
 	apt-get install --no-install-recommends --no-install-suggests -y \
         libwww-perl python3-bson python3-dnspython python3-pymongo \
-		python3-pytest python3-toml ;\
+		python3-pytest;\
 	apt-get clean ;\
 	rm -vrf /var/lib/apt/lists/*
 
@@ -25,7 +25,7 @@ RUN apt-get update ;\
 
 # Create a copy of our current target state and install some python modules
 # that aren't available in apt. We copy these modules to our target at the end.
-FROM icinga2-target as pipinstalls
+FROM icinga2-target AS pipinstalls
 
 RUN apt-get update ;\
 	apt-get install --no-install-recommends --no-install-suggests -y \
