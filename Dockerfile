@@ -13,8 +13,8 @@ USER root
 # Keep package names in alphabetical order
 RUN apt-get update ;\
 	apt-get install --no-install-recommends --no-install-suggests -y \
-        libwww-perl python3-bson python3-dnspython python3-pymongo \
-		python3-pytest;\
+		libxml-simple-perl libwww-perl python3-bson python3-dnspython \
+		python3-pymongo python3-pytest;\
 	apt-get clean ;\
 	rm -vrf /var/lib/apt/lists/*
 
@@ -34,8 +34,8 @@ RUN apt-get update ;\
 # Removing the entire /usr/local/lib contents is extreme, but this keeps things
 # clean for the copy operation later.
 RUN rm -r /usr/local/lib/*;\
-	pip3 install \
-    	pytest-testinfra ;
+	pip3 install --no-cache-dir \
+    	boto3 boto3-assume click pendulum pytest-testinfra typing-extensions ;
 
 #########################
 ### END Custom Stages ###
