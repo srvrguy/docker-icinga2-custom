@@ -35,7 +35,8 @@ RUN apt-get update ;\
 # clean for the copy operation later.
 RUN rm -r /usr/local/lib/*;\
 	pip3 install --no-cache-dir \
-    	boto3 boto3-assume click pendulum pytest-testinfra typing-extensions ;
+    	boto3 boto3-assume click click-log click-option-group pendulum \
+		pytest-testinfra typing-extensions ;
 
 #########################
 ### END Custom Stages ###
