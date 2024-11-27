@@ -3,7 +3,7 @@
 
 # Pull our base image in. This instance of the image will be the target to which
 # we apply our modifications
-FROM ghcr.io/srvrguy/icinga2:v2.14.2 AS icinga2-target
+FROM icinga/icinga2:2.14.3 AS icinga2-target
 
 # The base image switches to the icinga user, we need to switch to root to do
 # our additions.
