@@ -13,10 +13,20 @@ USER root
 # Keep package names in alphabetical order
 RUN apt-get update ;\
 	apt-get install --no-install-recommends --no-install-suggests -y \
-		libxml-simple-perl libwww-perl python3-bson python3-dnspython \
-		python3-pymongo python3-pytest;\
+		libaio1 libdbi-perl libxml-simple-perl libwww-perl python3-bson \
+		python3-dnspython python3-pymongo python3-pytest unzip ;\
 	apt-get clean ;\
 	rm -vrf /var/lib/apt/lists/*
+
+# download and set up the Oracle Instant Client basic package
+RUN	ORACLEARCH=$([ $(dpkg --print-architecture) = "amd64" ] && echo "x64" || echo $(dpkg --print-architecture) ) ;\
+	curl -O https://download.oracle.com/otn_software/linux/instantclient/1925000/instantclient-basiclite-linux.$ORACLEARCH-19.25.0.0.0dbru.zip ;\
+	mkdir -p /opt/oracle ;\
+	unzip -n 'instantclient*.zip' -d /opt/oracle ;\
+	cd /opt/oracle ;\
+	ln -s instantclient_19_25 instantclient ;\
+	echo "/opt/oracle/instantclient" > /etc/ld.so.conf.d/oracleinstantclient.conf ;\
+	/sbin/ldconfig
 
 ###########################
 ### BEGIN Custom Stages ###
@@ -38,6 +48,25 @@ RUN rm -r /usr/local/lib/*;\
     	boto3 boto3-assume click click-log click-option-group pendulum \
 		pytest-testinfra typing-extensions ;
 
+# The "lovely" stage needed for DBD::Oracle
+from icinga2-target AS perlmodules
+
+# install the needed modules for the compilation
+RUN apt-get update ;\
+	apt-get install --no-install-recommends --no-install-suggests -y \
+		build-essential cpanminus ;
+
+# download and set up the Oracle Instant Client packages
+RUN	ORACLEARCH=$([ $(dpkg --print-architecture) = "amd64" ] && echo "x64" || echo $(dpkg --print-architecture) ) ;\
+	curl -O -O https://download.oracle.com/otn_software/linux/instantclient/1925000/instantclient-sqlplus-linux.$ORACLEARCH-19.25.0.0.0dbru.zip \
+	https://download.oracle.com/otn_software/linux/instantclient/1925000/instantclient-sdk-linux.$ORACLEARCH-19.25.0.0.0dbru.zip ;\
+	mkdir -p /opt/oracle ;\
+	unzip -n 'instantclient*.zip' -d /opt/oracle
+
+# build DBD::Oracle
+RUN ln -s /opt/oracle/instantclient/libclntshcore.so.19.1 /opt/oracle/instantclient/libclntshcore.so ;\
+	ORACLE_HOME=/opt/oracle/instantclient cpanm --no-man-pages --notest DBD::Oracle ;
+
 #########################
 ### END Custom Stages ###
 #########################
@@ -47,6 +76,9 @@ FROM icinga2-target
 
 # Copy the pip modules into the target
 COPY --from=pipinstalls /usr/local/lib/ /usr/local/lib/
+
+# Copy the Perl modules into the target
+COPY --from=perlmodules /usr/local/lib/ /usr/local/lib/
 
 # Switch the user back to icinga so things run cleanly
 USER icinga
