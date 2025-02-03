@@ -13,8 +13,10 @@ USER root
 # Keep package names in alphabetical order
 RUN apt-get update ;\
 	apt-get install --no-install-recommends --no-install-suggests -y \
-		libaio1 libdbi-perl libxml-simple-perl libwww-perl python3-bson \
-		python3-dnspython python3-pymongo python3-pytest unzip ;\
+		libaio1 libdbi-perl libconfig-general-perl libio-socket-multicast-perl \
+		libjson-perl libwww-perl libmodule-find-perl libmonitoring-plugin-perl \
+		libsys-sigaction-perl liburi-perl libxml-simple-perl libwww-perl \
+		python3-bson python3-dnspython python3-pymongo python3-pytest unzip ;\
 	apt-get clean ;\
 	rm -vrf /var/lib/apt/lists/*
 
@@ -33,6 +35,31 @@ RUN	ORACLEARCH=$([ $(dpkg --print-architecture) = "amd64" ] && echo "x64" || ech
 ###########################
 # Things we can't do cleanly in our target happen now.
 
+# Custom Check Plugins that need to be bundled
+FROM buildpack-deps:scm as clone-plugins
+
+RUN git clone --bare https://github.com/lausser/check_oracle_health.git ;\
+	git -C check_oracle_health.git archive --prefix=check_oracle_health/ 4bf20a38be3d4934c00da6845cf29ab648e09e65 |tar -x ;\
+	rm -rf *.git
+
+FROM debian:bookworm-slim as build-plugins
+
+RUN apt-get update ;\
+	apt-get upgrade -y;\
+	apt-get install --no-install-recommends --no-install-suggests -y \
+		autoconf automake make ;\
+	apt-get clean ;\
+	rm -vrf /var/lib/apt/lists/*
+
+COPY --from=clone-plugins /check_oracle_health /check_oracle_health
+
+RUN cd /check_oracle_health ;\
+	mkdir bin ;\
+	autoreconf ;\
+	./configure "--build=$(uname -m)-unknown-linux-gnu" --libexecdir=/usr/lib/nagios/plugins ;\
+	make ;\
+	make install "DESTDIR=$(pwd)/bin"
+
 # Create a copy of our current target state and install some python modules
 # that aren't available in apt. We copy these modules to our target at the end.
 FROM icinga2-target AS pipinstalls
@@ -48,13 +75,13 @@ RUN rm -r /usr/local/lib/*;\
     	boto3 boto3-assume click click-log click-option-group pendulum \
 		pytest-testinfra typing-extensions ;
 
-# The "lovely" stage needed for DBD::Oracle
-from icinga2-target AS perlmodules
+# The "lovely" stage needed for DBD::Oracle and other custom Perl stuff
+FROM icinga2-target AS perlmodules
 
 # install the needed modules for the compilation
 RUN apt-get update ;\
 	apt-get install --no-install-recommends --no-install-suggests -y \
-		build-essential cpanminus ;
+		build-essential cpanminus expect ;
 
 # download and set up the Oracle Instant Client packages
 RUN	ORACLEARCH=$([ $(dpkg --print-architecture) = "amd64" ] && echo "x64" || echo $(dpkg --print-architecture) ) ;\
@@ -67,6 +94,12 @@ RUN	ORACLEARCH=$([ $(dpkg --print-architecture) = "amd64" ] && echo "x64" || ech
 RUN ln -s /opt/oracle/instantclient/libclntshcore.so.19.1 /opt/oracle/instantclient/libclntshcore.so ;\
 	ORACLE_HOME=/opt/oracle/instantclient cpanm --no-man-pages --notest DBD::Oracle ;
 
+# Copy up the expect script for JMX4Perl
+COPY jmx4perl.exp /
+
+# Install JMX4Perl (just the jmx4perl and check_jmx4perl binaries)
+RUN /usr/bin/expect /jmx4perl.exp
+
 #########################
 ### END Custom Stages ###
 #########################
@@ -77,8 +110,14 @@ FROM icinga2-target
 # Copy the pip modules into the target
 COPY --from=pipinstalls /usr/local/lib/ /usr/local/lib/
 
-# Copy the Perl modules into the target
-COPY --from=perlmodules /usr/local/lib/ /usr/local/lib/
+# Copy the Perl modules into the target (Some are in /usr/local/lib others are in /usr/local/share)
+COPY --from=perlmodules /usr/local/ /usr/local/
+
+# Some perl modules bundle check plugins, and they get installed to /usr/local/bin. Copy these to the plugins directory.
+COPY --from=perlmodules /usr/local/bin/check_* /usr/lib/nagios/plugins/
+
+# Copy extra check plugins into the target
+COPY --from=build-plugins /check_oracle_health/bin/ /
 
 # Switch the user back to icinga so things run cleanly
 USER icinga

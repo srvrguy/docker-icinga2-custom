@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+set timeout 30
+set force_conservative 1
+
+if {$force_conservative} {
+    set send_slow {1 .1}
+    proc send {ignore arg} {
+        sleep .1
+        exp_send -s -- $arg
+    }
+}
+
+spawn cpanm JMX::Jmx4Perl --no-man-pages --notest --interactive
+
+expect -re ".*Install.*'jmx4perl'.*\[? \]"
+send -- "y\r"
+
+expect -re ".*Install.*'check_jmx4perl'.*\[? \]"
+send -- "y\r"
+
+expect -re ".*Install.*'cacti_jmx4perl'.*\[? \]"
+send -- "n\r"
+
+expect -re ".*Install.*'j4psh'.*\[? \]"
+send -- "n\r"
+
+expect -re ".*Install.*'jolokia'.*\[? \]"
+send -- "n\r"
+
+expect eof
