@@ -13,9 +13,10 @@ USER root
 # Keep package names in alphabetical order
 RUN apt-get update ;\
 	apt-get install --no-install-recommends --no-install-suggests -y \
-		libaio1 libdbi-perl libconfig-general-perl libio-socket-multicast-perl \
-		libjson-perl libwww-perl libmodule-find-perl libmonitoring-plugin-perl \
-		libsys-sigaction-perl liburi-perl libxml-simple-perl libwww-perl \
+		libaio1 libconfig-general-perl libdbd-pg-perl libdbi-perl \
+		libio-socket-multicast-perl libjson-perl libwww-perl \
+		libmodule-find-perl libmonitoring-plugin-perl libsys-sigaction-perl \
+		liburi-perl libxml-simple-perl libwww-perl postgresql-client \
 		python3-bson python3-dnspython python3-pymongo python3-pytest unzip ;\
 	apt-get clean ;\
 	rm -vrf /var/lib/apt/lists/*
@@ -38,8 +39,14 @@ RUN	ORACLEARCH=$([ $(dpkg --print-architecture) = "amd64" ] && echo "x64" || ech
 # Custom Check Plugins that need to be bundled
 FROM buildpack-deps:scm AS clone-plugins
 
+# Oracle Health Check
 RUN git clone --bare https://github.com/lausser/check_oracle_health.git ;\
 	git -C check_oracle_health.git archive --prefix=check_oracle_health/ 4bf20a38be3d4934c00da6845cf29ab648e09e65 |tar -x ;\
+	rm -rf *.git
+
+# PostgreSQL Health Check
+RUN git clone --bare https://github.com/bucardo/check_postgres.git ;\
+	git -C check_postgres.git archive --prefix=check_postgres/ 8a23adc3e19ccb6fd6b38629192e82eb3cb34a3b |tar -x ;\
 	rm -rf *.git
 
 FROM debian:bookworm-slim AS build-plugins
@@ -52,11 +59,18 @@ RUN apt-get update ;\
 	rm -vrf /var/lib/apt/lists/*
 
 COPY --from=clone-plugins /check_oracle_health /check_oracle_health
+COPY --from=clone-plugins /check_postgres /check_postgres
 
 RUN cd /check_oracle_health ;\
 	mkdir bin ;\
 	autoreconf ;\
 	./configure "--build=$(uname -m)-unknown-linux-gnu" --libexecdir=/usr/lib/nagios/plugins ;\
+	make ;\
+	make install "DESTDIR=$(pwd)/bin"
+
+RUN cd /check_postgres ;\
+	mkdir bin ;\
+	perl Makefile.PL; \
 	make ;\
 	make install "DESTDIR=$(pwd)/bin"
 
@@ -118,6 +132,7 @@ COPY --from=perlmodules /usr/local/bin/check_* /usr/lib/nagios/plugins/
 
 # Copy extra check plugins into the target
 COPY --from=build-plugins /check_oracle_health/bin/ /
+COPY --from=build-plugins /check_postgres/bin/usr/local/bin/check_postgres.pl /usr/lib/nagios/plugins/check_postgres
 
 # Switch the user back to icinga so things run cleanly
 USER icinga
