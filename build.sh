@@ -14,7 +14,7 @@ fi
 if [ -z "$ACTION" ]; then
 	cat <<EOF >&2
 FATAL: You must specify an action to take
-Usage: ${0} [build|push [TAG]]
+Usage: ${0} [build|push|local-build [TAG]]
 EOF
 	false
 fi
@@ -46,5 +46,8 @@ case "$ACTION" in
 		;;
 	push)
 		"${BUILD_CMD[@]}" --push "${COMMON_ARGS[@]}"
+		;;
+	local-build)
+		"${BUILD_CMD[@]}" --load "${COMMON_ARGS[@]}"
 		;;
 esac
