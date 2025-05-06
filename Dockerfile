@@ -36,13 +36,13 @@ RUN	ORACLEARCH=$([ $(dpkg --print-architecture) = "amd64" ] && echo "x64" || ech
 # Things we can't do cleanly in our target happen now.
 
 # Custom Check Plugins that need to be bundled
-FROM buildpack-deps:scm as clone-plugins
+FROM buildpack-deps:scm AS clone-plugins
 
 RUN git clone --bare https://github.com/lausser/check_oracle_health.git ;\
 	git -C check_oracle_health.git archive --prefix=check_oracle_health/ 4bf20a38be3d4934c00da6845cf29ab648e09e65 |tar -x ;\
 	rm -rf *.git
 
-FROM debian:bookworm-slim as build-plugins
+FROM debian:bookworm-slim AS build-plugins
 
 RUN apt-get update ;\
 	apt-get upgrade -y;\
