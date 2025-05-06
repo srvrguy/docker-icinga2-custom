@@ -3,7 +3,7 @@
 
 # Pull our base image in. This instance of the image will be the target to which
 # we apply our modifications
-FROM icinga/icinga2:2.14.3 AS icinga2-target
+FROM icinga/icinga2:2.14.5 AS icinga2-target
 
 # The base image switches to the icinga user, we need to switch to root to do
 # our additions.
@@ -71,7 +71,7 @@ RUN apt-get update ;\
 # Removing the entire /usr/local/lib contents is extreme, but this keeps things
 # clean for the copy operation later.
 RUN rm -r /usr/local/lib/*;\
-	pip3 install --no-cache-dir \
+	pip3 install --no-cache-dir --break-system-packages \
     	boto3 boto3-assume click click-log click-option-group pendulum \
 		pytest-testinfra typing-extensions ;
 
