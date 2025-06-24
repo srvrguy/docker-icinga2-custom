@@ -132,7 +132,7 @@ COPY --from=perlmodules /usr/local/bin/check_* /usr/lib/nagios/plugins/
 
 # Copy extra check plugins into the target
 COPY --from=build-plugins /check_oracle_health/bin/ /
-COPY --from=build-plugins /check_postgres/bin/usr/local/bin/check_postgres.pl /usr/lib/nagios/plugins/check_postgres
+COPY --from=build-plugins /check_postgres/bin/usr/local/bin/check_postgres.pl /usr/lib/nagios/plugins/check_postgres.pl
 
 # Switch the user back to icinga so things run cleanly
 USER icinga
