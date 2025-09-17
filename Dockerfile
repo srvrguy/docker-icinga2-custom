@@ -86,8 +86,7 @@ RUN apt-get update ;\
 # clean for the copy operation later.
 RUN rm -r /usr/local/lib/*;\
 	pip3 install --no-cache-dir --break-system-packages \
-    	boto3 boto3-assume click click-log click-option-group pendulum \
-		pytest-testinfra typing-extensions ;
+		pytest-testinfra uv;
 
 # The "lovely" stage needed for DBD::Oracle and other custom Perl stuff
 FROM icinga2-target AS perlmodules
@@ -123,6 +122,7 @@ FROM icinga2-target
 
 # Copy the pip modules into the target
 COPY --from=pipinstalls /usr/local/lib/ /usr/local/lib/
+COPY --from=pipinstalls /usr/local/bin/* /usr/bin/
 
 # Copy the Perl modules into the target (Some are in /usr/local/lib others are in /usr/local/share)
 COPY --from=perlmodules /usr/local/ /usr/local/
