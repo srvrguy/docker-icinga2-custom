@@ -3,7 +3,7 @@
 
 # Pull our base image in. This instance of the image will be the target to which
 # we apply our modifications
-FROM icinga/icinga2:2.15.0 AS icinga2-target
+FROM icinga/icinga2:2.15.1 AS icinga2-target
 
 # The base image switches to the icinga user, we need to switch to root to do
 # our additions.
