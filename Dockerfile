@@ -49,6 +49,11 @@ RUN git clone --bare https://github.com/bucardo/check_postgres.git ;\
 	git -C check_postgres.git archive --prefix=check_postgres/ 8a23adc3e19ccb6fd6b38629192e82eb3cb34a3b |tar -x ;\
 	rm -rf *.git
 
+# Updated SSL Cert Check
+RUN git clone --bare https://github.com/matteocorti/check_ssl_cert.git ;\
+	git -C check_ssl_cert.git archive --prefix=check_ssl_cert/ 914d1f7b7a9074da0a8f301fa0f6d2c3c39679d2 |tar -x ;\
+	rm -rf *.git
+
 FROM debian:bookworm-slim AS build-plugins
 
 RUN apt-get update ;\
@@ -133,6 +138,7 @@ COPY --from=perlmodules /usr/local/bin/check_* /usr/lib/nagios/plugins/
 # Copy extra check plugins into the target
 COPY --from=build-plugins /check_oracle_health/bin/ /
 COPY --from=build-plugins /check_postgres/bin/usr/local/bin/check_postgres.pl /usr/lib/nagios/plugins/check_postgres.pl
+COPY --from=clone-plugins /check_ssl_cert/check_ssl_cert /usr/lib/nagios/plugins/check_ssl_cert
 
 # Switch the user back to icinga so things run cleanly
 USER icinga
